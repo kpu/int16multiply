@@ -4,10 +4,11 @@
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 
-#include "interleave.h"
-#include "kernels.h"
-#include "multiply.h"
-#include "types.h"
+#include "../interleave.h"
+#include "../kernels.h"
+#include "../multiply.h"
+#include "../types.h"
+#include "backend.h"
 
 #include <cassert>
 #include <cstddef>
@@ -70,7 +71,7 @@ INTGEMM_AVX512BW inline __m512i QuantizerGrabHalves(const float *input0, const f
 // being used for the quantizer.
 class QuantizeTile16 {
   public:
-    typedef __m512i Integer;
+    using Integer = __m512i;
 
     /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
     INTGEMM_AVX512BW explicit QuantizeTile16(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
@@ -89,7 +90,7 @@ class QuantizeTile16 {
 
 class QuantizeTile8 {
   public:
-    typedef __m512i Integer;
+    using Integer = __m512i;
 
     /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
     INTGEMM_AVX512BW explicit QuantizeTile8(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
@@ -125,8 +126,9 @@ INTGEMM_MAXABSOLUTE(__m512, INTGEMM_AVX512BW)
 
 } // namespace
 
-struct AVX512_16bit {
-  typedef int16_t Integer;
+template <>
+struct Backend<CPUType::AVX512BW, int16_t> {
+  static inline const char* const Name() { return "16-bit AVX512"; };
 
   // Currently A is prepared by quantization but this could theoretically change.
   // rows * cols must be a multiple of 16.
@@ -171,14 +173,11 @@ struct AVX512_16bit {
   
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
   INTGEMM_MULTIPLY16(__m512i, INTGEMM_AVX512BW, CPUType::AVX2)
-
-  constexpr static const char *const kName = "16-bit AVX512";
-
-  static const CPUType kUses = CPUType::AVX512BW;
 };
 
-struct AVX512_8bit {
-  typedef int8_t Integer;
+template <>
+struct Backend<CPUType::AVX512BW, int8_t> {
+  static inline const char* const Name() { return "8-bit AVX512BW"; };
 
   // Currently A is prepared by quantization but this could theoretically change.
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
@@ -252,8 +251,8 @@ struct AVX512_8bit {
   // allocate registers manually) and no sign instruction.
   template <typename Callback>
   INTGEMM_AVX512BW static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    typedef __m512i Integer;
-    //typedef __m256 Float; // For quantization we only do 8 at a time.
+    using Integer = __m512i;
+    //using Float = __m256; // For quantization we only do 8 at a time.
     // This is copy-paste from Multiply8_SSE2OrAVX2.
     assert(width % sizeof(Integer) == 0);
     assert(B_cols % 8 == 0);
@@ -365,12 +364,18 @@ struct AVX512_8bit {
   INTGEMM_MULTIPLY8SHIFT(__m512i, INTGEMM_AVX512BW, CPUType::AVX2)
 
   INTGEMM_PREPAREBIASFOR8(__m512i, INTGEMM_AVX512BW, CPUType::AVX2)
-
-  constexpr static const char *const kName = "8-bit AVX512BW";
-
-  static const CPUType kUses = CPUType::AVX512BW;
 };
 
 } // namespace intgemm
+
+#else
+
+namespace avx512f {
+
+static inline float MaxAbsolute(const float *begin, const float *end) {
+  throw UnsupportedCPU();
+}
+
+}
 
 #endif

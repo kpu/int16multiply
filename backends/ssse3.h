@@ -1,14 +1,15 @@
 #pragma once
 
-#include "interleave.h"
-#include "kernels.h"
-#include "multiply.h"
-#include "types.h"
+#include "../interleave.h"
+#include "../kernels.h"
+#include "../multiply.h"
+#include "../types.h"
+#include "backend.h"
 
 #include <cstdint>
 #include <stdint.h>
 
-// 16-bit is in sse2_gemm.h
+// 16-bit is in sse2.h
 
 namespace intgemm {
 
@@ -22,7 +23,7 @@ INTGEMM_SELECT_COL_B(INTGEMM_SSSE3, __m128i)
 
 class QuantizeTile8 {
   public:
-    typedef __m128i Integer;
+    using Integer = __m128i;
 
     INTGEMM_SSSE3 explicit QuantizeTile8(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
 
@@ -93,10 +94,10 @@ class QuantizeTile8 {
 
 } // namespace
 
-
 // pmaddubsw (the 8-bit multiply) is INTGEMM_SSSE3, so pedantically that's the version we need.
-struct SSSE3_8bit {
-  typedef int8_t Integer;
+template <>
+struct Backend<CPUType::SSSE3, int8_t> {
+  static inline const char* const Name() { return "8-bit SSSE3"; };
 
   // Currently A is prepared by quantization but this could theoretically change.
   INTGEMM_SSSE3 static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
@@ -146,10 +147,6 @@ struct SSSE3_8bit {
   INTGEMM_MULTIPLY8SHIFT(__m128i, INTGEMM_SSSE3, CPUType::SSE2)
   
   INTGEMM_PREPAREBIASFOR8(__m128i, INTGEMM_SSSE3, CPUType::SSE2)
-
-  constexpr static const char *const kName = "8-bit SSSE3";
-
-  static const CPUType kUses = CPUType::SSSE3;
 };
 
 } // namespace intgemm

@@ -1,13 +1,14 @@
 #pragma once
 
-#include "kernels.h"
-#include "multiply.h"
-#include "types.h"
+#include "../kernels.h"
+#include "../multiply.h"
+#include "../types.h"
+#include "backend.h"
 
 #include <cstdint>
 #include <stdint.h>
 
-// 8 bit is in ssse3_gemm.h
+// 8 bit is in ssse3.h
 
 namespace intgemm {
 
@@ -21,7 +22,7 @@ INTGEMM_SELECT_COL_B(INTGEMM_SSE2, __m128i)
 
 class QuantizeTile16 {
   public:
-    typedef __m128i Integer;
+    using Integer = __m128i;
 
     INTGEMM_SSE2 explicit QuantizeTile16(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
 
@@ -45,9 +46,11 @@ class QuantizeTile16 {
 INTGEMM_MAXABSOLUTE(__m128, INTGEMM_SSE2)
 
 } //namespace
+
 // This should be pure INTGEMM_SSE2 (and below).
-struct SSE2_16bit {
-  typedef int16_t Integer;
+template <>
+struct Backend<CPUType::SSE2, int16_t> {
+  static inline const char* const Name() { return "16-bit SSE2"; };
 
   // Currently A is prepared by quantization but this could theoretically change.
   INTGEMM_SSE2 static inline void PrepareA(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
@@ -76,10 +79,6 @@ struct SSE2_16bit {
     sse2::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows * 2, cols_begin, cols_end);
   }
   INTGEMM_MULTIPLY16(__m128i, INTGEMM_SSE2, CPUType::SSE2)
-
-  constexpr static const char *const kName = "16-bit SSE2";
-
-  static const CPUType kUses = CPUType::SSE2;
 };
 
 } // namespace intgemm

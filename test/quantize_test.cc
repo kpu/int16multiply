@@ -1,9 +1,6 @@
 #include "test.h"
 #include "../aligned.h"
-#include "../avx2_gemm.h"
-#include "../avx512_gemm.h"
-#include "../sse2_gemm.h"
-#include "../ssse3_gemm.h"
+#include "../backends.h"
 
 #include <cstring>
 #include <iostream>
@@ -41,7 +38,7 @@ template <class I> bool IsOff(float from, I ref, I test) {
 }
 
 template <class Backend> bool Test(const float *input_unaligned, float quant_mult, std::size_t size) {
-  typedef typename Backend::Integer Integer;
+  using Integer = typename BackendInfo<Backend>::Integer;
   bool success = true;
   AlignedVector<float> input(size);
   std::memcpy(input.begin(), input_unaligned, sizeof(float) * size);

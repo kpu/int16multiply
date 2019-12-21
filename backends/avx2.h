@@ -1,9 +1,10 @@
 #pragma once
 
-#include "interleave.h"
-#include "kernels.h"
-#include "multiply.h"
-#include "types.h"
+#include "../interleave.h"
+#include "../kernels.h"
+#include "../multiply.h"
+#include "../types.h"
+#include "backend.h"
 
 #include <cstdint>
 #include <stdint.h>
@@ -20,7 +21,7 @@ INTGEMM_SELECT_COL_B(INTGEMM_AVX2, __m256i)
 
 class QuantizeTile16 {
   public:
-    typedef __m256i Integer;
+    using Integer = __m256i;
 
     INTGEMM_AVX2 explicit QuantizeTile16(float mult) : mult_(_mm256_set1_ps(mult)) {}
 
@@ -49,8 +50,9 @@ class QuantizeTile16 {
 } // namespace
 
 
-struct AVX2_16bit {
-  typedef int16_t Integer;
+template <>
+struct Backend<CPUType::AVX2, int16_t> {
+  static inline const char* const Name() { return "16-bit AVX2"; };
 
   // Currently A is prepared by quantization but this could theoretically change.
   INTGEMM_AVX2 static inline void PrepareA(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
@@ -82,10 +84,6 @@ struct AVX2_16bit {
   }
   
   INTGEMM_MULTIPLY16(__m256i, INTGEMM_AVX2, CPUType::AVX2)
-
-  constexpr static const char *const kName = "16-bit AVX2";
-
-  static const CPUType kUses = CPUType::AVX2;
 };
 
 namespace avx2 {
@@ -95,7 +93,7 @@ namespace avx2 {
  */
 class QuantizeTile8 {
   public:
-    typedef __m256i Integer;
+    using Integer = __m256i;
 
     INTGEMM_AVX2 explicit QuantizeTile8(float quant_mult) : mult_(_mm256_set1_ps(quant_mult)) {}
 
@@ -171,8 +169,9 @@ INTGEMM_MAXABSOLUTE(__m256, INTGEMM_AVX2)
 
 } // namespace
 
-struct AVX2_8bit {
-  typedef int8_t Integer;
+template <>
+struct Backend<CPUType::AVX2, int8_t> {
+  static inline const char* const Name() { return "8-bit AVX2"; };
 
   // Currently A is prepared by quantization but this could theoretically change.
   INTGEMM_AVX2 static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
@@ -221,10 +220,6 @@ struct AVX2_8bit {
   INTGEMM_MULTIPLY8SHIFT(__m256i, INTGEMM_AVX2, CPUType::AVX2)
 
   INTGEMM_PREPAREBIASFOR8(__m256i, INTGEMM_AVX2, CPUType::AVX2)
-  
-  constexpr static const char *const kName = "8-bit AVX2";
-
-  static const CPUType kUses = CPUType::AVX2;
 };
 
 } // namespace intgemm

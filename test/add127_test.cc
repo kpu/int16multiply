@@ -109,7 +109,7 @@ template <class Routine> void TestPrepareBias(Index rows, Index cols) {
 template <class Routine> void TestMultiplyBiasNew(Index A_rows, Index width, Index B_cols,
  float int_tolerance=.1, float float_tolerance=1, float MSE_float_tolerance=0, float MSE_int_tolerance=0) {
   std::ostringstream info;
-  info << Routine::kName << "\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
+  info << Routine::Name() << "\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
 
   // Initialize A and B.
   AlignedVector<float> A(A_rows * width);

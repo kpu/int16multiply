@@ -1,9 +1,6 @@
 #include "../aligned.h"
 #include "intgemm_config.h"
-#include "../avx512_gemm.h"
-#include "../sse2_gemm.h"
-#include "../avx2_gemm.h"
-#include "../ssse3_gemm.h"
+#include "../backends.h"
 #include "../intgemm.h"
 #include "../stop_watch.h"
 #include "../callbacks.h"
@@ -71,7 +68,7 @@ struct RandomMatrices {
 };
 
 template <class Backend> void Run(const RandomMatrices &m, std::vector<uint64_t> &stats) {
-  typedef typename Backend::Integer Integer;
+  using Integer = typename BackendInfo<Backend>::Integer;
   float quant_mult = 127.0 / 2;
   float unquant_mult = 1.0 / (quant_mult * quant_mult);
   AlignedVector<Integer> A_prepared(m.A_rows * m.width);
@@ -88,7 +85,7 @@ template <class Backend> void Run(const RandomMatrices &m, std::vector<uint64_t>
 }
 
 template <class Backend> void RunAll(RandomMatrices *matrices, RandomMatrices *matrices_end, std::vector<std::vector<uint64_t>> &stats) {
-  if (Backend::kUses > kCPU) return;
+  if (BackendInfo<Backend>::Cpu > kCPU) return;
   std::size_t size = matrices_end - matrices;
   if (stats.size() < size)
     stats.resize(size);
@@ -128,7 +125,7 @@ void Summarize(std::vector<uint64_t> &stats) {
 
 template <class Backend> void Print(std::vector<std::vector<uint64_t>> &stats, int index) {
   if (stats.empty()) return;
-  std::cout << std::setw(16) << Backend::kName << '\t';
+  std::cout << std::setw(16) << Backend::Name() << '\t';
   Summarize(stats[index]);
   std::cout << '\n';
 }
